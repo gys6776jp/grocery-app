@@ -1,0 +1,287 @@
+@page "/"
+@inject ApiService Api
+
+@if (!isAuth)
+{
+    <div class="login-wrap">
+        <div class="card">
+            <h2>買い物アプリ</h2>
+            @if (!string.IsNullOrEmpty(errorMsg)) { <p class="error">@errorMsg</p> }
+            <div class="form-group">
+                <label>ユーザー名</label>
+                <input @bind="username" type="text" placeholder="ユーザー名" autocomplete="username" />
+            </div>
+            <div class="form-group">
+                <label>パスワード</label>
+                <input @bind="password" type="password" placeholder="パスワード" />
+            </div>
+            @if (showRegister)
+            {
+                <div class="form-group">
+                    <label>登録コード</label>
+                    <input @bind="registerCode" type="password" placeholder="管理者から受け取ったコード" autocomplete="off" />
+                </div>
+                <button class="btn-primary" @onclick="Register">アカウントを作成</button>
+                <button class="btn-sub" @onclick="ShowLogin">ログインに戻る</button>
+            }
+            else
+            {
+                <button class="btn-primary" @onclick="Login">ログイン</button>
+                <button class="btn-sub" @onclick="ShowRegister">新規登録</button>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <div class="app">
+        <div class="tab-bar">
+            <button class="tab @(tab=="list"?"active":"")" @onclick="ShowList">買い物リスト</button>
+            <button class="tab @(tab=="master"?"active":"")" @onclick="ShowMaster">よく買うもの</button>
+            <button class="tab @(tab=="add"?"active":"")" @onclick="ShowAdd">追加</button>
+            <button class="tab-logout" @onclick="Logout">ログアウト</button>
+        </div>
+
+        @if (tab == "list")
+        {
+            <div class="header-row">
+                <span class="count-text">@checkedCount / @totalCount 件</span>
+                <button class="btn-sm" @onclick="ResetChecked">チェック済み削除</button>
+            </div>
+            <div class="progress-wrap">
+                <div class="progress-bar" style="width:@progressPct%"></div>
+            </div>
+
+            @if (listItems == null)
+            {
+                <p class="loading">読み込み中...</p>
+            }
+            else if (!listItems.Any())
+            {
+                <p class="empty">リストに商品がありません</p>
+            }
+            else
+            {
+                @foreach (var item in listItems.Where(i => !i.IsChecked))
+                {
+                    var itemId = item.Id;
+                    <div class="card item-card">
+                        <div class="item-row">
+                            <div class="check-circle" @onclick="() => ToggleItem(itemId)"></div>
+                            <div class="item-info">
+                                <div class="item-name">@item.Name</div>
+                                @if (!string.IsNullOrEmpty(item.Quantity) || !string.IsNullOrEmpty(item.Memo))
+                                {
+                                    <div class="item-sub">@item.Quantity @item.Memo</div>
+                                }
+                            </div>
+                            <button class="btn-del" @onclick="() => DeleteItem(itemId)">×</button>
+                        </div>
+                    </div>
+                }
+                @if (listItems.Any(i => i.IsChecked))
+                {
+                    <hr class="divider" />
+                    <p class="done-label">購入済み</p>
+                    @foreach (var item in listItems.Where(i => i.IsChecked))
+                    {
+                        var itemId = item.Id;
+                        <div class="card item-card">
+                            <div class="item-row">
+                                <div class="check-circle checked" @onclick="() => ToggleItem(itemId)"></div>
+                                <div class="item-info">
+                                    <div class="item-name done-text">@item.Name</div>
+                                </div>
+                                <button class="btn-del" @onclick="() => DeleteItem(itemId)">×</button>
+                            </div>
+                        </div>
+                    }
+                }
+            }
+        }
+
+        @if (tab == "master")
+        {
+            @if (!string.IsNullOrEmpty(masterMessage))
+            {
+                <div class="toast">@masterMessage</div>
+            }
+            @if (masterItems == null)
+            {
+                <p class="loading">読み込み中...</p>
+            }
+            else if (!masterItems.Any())
+            {
+                <p class="empty">登録された商品がありません</p>
+            }
+            else
+            {
+                @foreach (var m in masterItems)
+                {
+                    var mName = m.Name;
+                    var mId = m.Id;
+                    <div class="card item-card">
+                        <div class="item-row">
+                            <div class="item-name" style="flex:1">@m.Name</div>
+                            <button class="btn-add-from-master" @onclick="() => AddFromMaster(mName)">+ リストへ</button>
+                            <button class="btn-del" @onclick="() => DeleteMaster(mId)">×</button>
+                        </div>
+                    </div>
+                }
+            }
+        }
+
+        @if (tab == "add")
+        {
+            @if (!string.IsNullOrEmpty(addMessage))
+            {
+                <div class="toast">@addMessage</div>
+            }
+            <div class="card" style="margin-bottom:1rem;">
+                <p class="section-title">よく買うものから選ぶ</p>
+                <div class="chips">
+                    @if (masterItems != null)
+                    {
+                        @foreach (var m in masterItems)
+                        {
+                            var mName = m.Name;
+                            <button class="chip" @onclick="() => AddFromMaster(mName)">@m.Name</button>
+                        }
+                    }
+                </div>
+            </div>
+            <div class="card">
+                <p class="section-title">新しく追加する</p>
+                <div class="form-group">
+                    <label>商品名 *</label>
+                    <input @bind="newName" type="text" placeholder="例：牛乳" />
+                </div>
+                <div class="form-group">
+                    <label>数量</label>
+                    <input @bind="newQty" type="text" placeholder="例：2本" />
+                </div>
+                <div class="form-group">
+                    <label>メモ</label>
+                    <textarea @bind="newMemo" placeholder="例：特売だったら2つ買って"></textarea>
+                </div>
+                <label class="check-label">
+                    <input type="checkbox" @bind="saveToMaster" /> よく買うものにも登録
+                </label>
+                <button class="btn-primary" @onclick="AddItem">リストに追加</button>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    string tab = "list";
+    bool isAuth = false;
+    bool showRegister = false;
+    string username = "", password = "", registerCode = "", errorMsg = "";
+    string newName = "", newQty = "", newMemo = "";
+    string addMessage = "", masterMessage = "";
+    bool saveToMaster = false;
+    List<ShoppingItemModel>? listItems;
+    List<MasterItemModel>? masterItems;
+
+    int totalCount => listItems?.Count ?? 0;
+    int checkedCount => listItems?.Count(i => i.IsChecked) ?? 0;
+    string progressPct => totalCount > 0 ? ((double)checkedCount / totalCount * 100).ToString("F0") : "0";
+
+    // ── タブ切り替え（ラムダ内でawaitできないため専用メソッドに）──
+    void ShowLogin()  { showRegister = false; errorMsg = ""; }
+    void ShowRegister() { showRegister = true; errorMsg = ""; }
+    async Task ShowList()   { tab = "list"; await LoadList(); }
+    async Task ShowMaster() { tab = "master"; await LoadMaster(); }
+    async Task ShowAdd()    { tab = "add"; await LoadMaster(); }
+
+    protected override async Task OnInitializedAsync()
+    {
+        isAuth = await Api.IsAuthenticatedAsync();
+        if (isAuth) await LoadList();
+    }
+
+    async Task Login()
+    {
+        errorMsg = "";
+        var res = await Api.LoginAsync(new LoginRequest(username, password));
+        if (res == null) { errorMsg = "ログインに失敗しました"; return; }
+        isAuth = true;
+        await LoadList();
+    }
+
+    async Task Register()
+    {
+        errorMsg = "";
+        if (string.IsNullOrWhiteSpace(registerCode)) { errorMsg = "登録コードを入力してください"; return; }
+        var res = await Api.RegisterAsync(new RegisterRequest(username, password, registerCode));
+        if (res == null) { errorMsg = "登録に失敗しました"; return; }
+        isAuth = true;
+        showRegister = false;
+        await LoadList();
+    }
+
+    async Task Logout()
+    {
+        await Api.LogoutAsync();
+        isAuth = false;
+        listItems = null;
+        username = password = registerCode = "";
+    }
+
+    async Task LoadList()
+    {
+        var res = await Api.GetListAsync();
+        listItems = res?.Items ?? new List<ShoppingItemModel>();
+    }
+
+    async Task LoadMaster()
+    {
+        masterItems = await Api.GetMasterItemsAsync();
+    }
+
+    async Task ToggleItem(int id)
+    {
+        await Api.ToggleItemAsync(id);
+        await LoadList();
+    }
+
+    async Task DeleteItem(int id)
+    {
+        await Api.DeleteItemAsync(id);
+        await LoadList();
+    }
+
+    async Task ResetChecked()
+    {
+        await Api.ResetCheckedAsync();
+        await LoadList();
+    }
+
+    async Task AddItem()
+    {
+        if (string.IsNullOrWhiteSpace(newName)) return;
+        await Api.AddItemAsync(new AddItemRequest(newName, newQty, newMemo, saveToMaster));
+        newName = newQty = newMemo = "";
+        saveToMaster = false;
+        addMessage = "リストに追加しました！";
+        StateHasChanged();
+        await Task.Delay(1500);
+        addMessage = "";
+    }
+
+    async Task AddFromMaster(string name)
+    {
+        await Api.AddItemAsync(new AddItemRequest(name, null, null, false));
+        masterMessage = $"「{name}」をリストに追加しました！";
+        StateHasChanged();
+        await Task.Delay(1500);
+        masterMessage = "";
+    }
+
+    async Task DeleteMaster(int id)
+    {
+        await Api.DeleteMasterItemAsync(id);
+        await LoadMaster();
+    }
+}

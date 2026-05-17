@@ -1,0 +1,74 @@
+version: '3.9'
+
+# Windows Docker Desktop での開発・確認用
+# 使い方: docker compose -f docker-compose.dev.yml up --build
+
+services:
+  db:
+    image: mariadb:11
+    container_name: grocery_db_dev
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: dev_root_pass
+      MYSQL_DATABASE: grocery
+      MYSQL_USER: grocery_user
+      MYSQL_PASSWORD: dev_pass
+    volumes:
+      - db_data_dev:/var/lib/mysql
+      - ./docker/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "3306:3306"   # 必要に応じてDBクライアントから直接接続可
+    networks:
+      - internal_dev
+
+  api:
+    build:
+      context: ./src
+      dockerfile: ../docker/api/Dockerfile
+    container_name: grocery_api_dev
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Default: "Server=db;Port=3306;Database=grocery;Uid=grocery_user;Pwd=dev_pass;"
+      Jwt__Key: dev_secret_key_minimum_32_characters_long
+      Jwt__Issuer: https://localhost
+      Jwt__Audience: https://localhost
+      App__FrontendOrigin: https://localhost
+      Auth__RegisterCode: dev_register_code_change_me
+    depends_on:
+      - db
+    networks:
+      - internal_dev
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/frontend/Dockerfile
+    container_name: grocery_frontend_dev
+    restart: unless-stopped
+    networks:
+      - internal_dev
+
+  nginx:
+    image: nginx:alpine
+    container_name: grocery_nginx_dev
+    restart: unless-stopped
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - api
+      - frontend
+    networks:
+      - internal_dev
+
+volumes:
+  db_data_dev:
+
+networks:
+  internal_dev:
+    driver: bridge

@@ -1,0 +1,72 @@
+version: '3.9'
+
+# 本番環境用
+# Apache がホストで動いており、grocery.yoshihamkorori.work を
+# このコンテナの 8880 ポートにプロキシする構成
+
+services:
+  db:
+    image: mariadb:11
+    container_name: grocery_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: grocery
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./docker/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - internal
+    # DBはホスト・外部に公開しない
+
+  api:
+    build:
+      context: ./src
+      dockerfile: ../docker/api/Dockerfile
+    container_name: grocery_api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Default: "Server=db;Port=3306;Database=grocery;Uid=${DB_USER};Pwd=${DB_PASSWORD};"
+      Jwt__Key: ${JWT_KEY}
+      Jwt__Issuer: https://grocery.yoshihamkorori.work
+      Jwt__Audience: https://grocery.yoshihamkorori.work
+      App__FrontendOrigin: https://grocery.yoshihamkorori.work
+      Auth__RegisterCode: ${REGISTER_CODE}
+    depends_on:
+      - db
+    networks:
+      - internal
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/frontend/Dockerfile
+    container_name: grocery_frontend
+    restart: unless-stopped
+    networks:
+      - internal
+
+  nginx:
+    image: nginx:alpine
+    container_name: grocery_nginx
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8880:80"  # ループバックのみ公開（外部から直接アクセス不可）
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+      - frontend
+    networks:
+      - internal
+
+volumes:
+  db_data:
+
+networks:
+  internal:
+    driver: bridge

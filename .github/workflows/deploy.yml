@@ -1,0 +1,49 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main  # main ブランチへの push で自動デプロイ
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: コードをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: VPS に SSH 接続してデプロイ
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          script: |
+            set -e
+            DEPLOY_DIR="${{ secrets.DEPLOY_DIR }}"
+
+            echo "=== 最新コードを取得 ==="
+            if [ ! -d "$DEPLOY_DIR/.git" ]; then
+              git clone https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ secrets.GH_REPO }}.git "$DEPLOY_DIR"
+            fi
+            cd "$DEPLOY_DIR"
+            git fetch origin
+            git reset --hard origin/main
+
+            echo "=== .env の存在確認 ==="
+            if [ ! -f "$DEPLOY_DIR/.env" ]; then
+              echo "ERROR: .env が見つかりません。サーバ上で先に作成してください。" >&2
+              echo "参考: $DEPLOY_DIR/.env.example"
+              exit 1
+            fi
+
+            echo "=== Docker コンテナをビルド・再起動 ==="
+            docker compose up -d --build --remove-orphans
+
+            echo "=== 古いイメージを削除 ==="
+            docker image prune -f
+
+            echo "=== デプロイ完了 ✓ ==="
