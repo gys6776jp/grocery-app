@@ -29,3 +29,11 @@ public interface IMasterItemRepository
     Task RemoveAsync(MasterItem item);
     Task SaveChangesAsync();
 }
+
+public interface IShoppingHistoryRepository
+{
+    Task<IEnumerable<ShoppingHistory>> GetByUserIdAsync(int userId);
+    Task<ShoppingHistory?> GetByIdAsync(int id);
+    Task AddAsync(ShoppingHistory history);
+    Task SaveChangesAsync();
+}

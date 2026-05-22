@@ -1,5 +1,6 @@
 @page "/"
 @inject ApiService Api
+@inject IJSRuntime JS
 
 @if (!isAuth)
 {
@@ -21,12 +22,12 @@
                     <label>登録コード</label>
                     <input @bind="registerCode" type="password" placeholder="管理者から受け取ったコード" autocomplete="off" />
                 </div>
-                <button class="btn-primary" @onclick="Register">アカウントを作成</button>
+                <button class="btn-primary btn-large" @onclick="Register">アカウントを作成</button>
                 <button class="btn-sub" @onclick="ShowLogin">ログインに戻る</button>
             }
             else
             {
-                <button class="btn-primary" @onclick="Login">ログイン</button>
+                <button class="btn-primary btn-large" @onclick="Login">ログイン</button>
                 <button class="btn-sub" @onclick="ShowRegister">新規登録</button>
             }
         </div>
@@ -37,8 +38,8 @@ else
     <div class="app">
         <div class="tab-bar">
             <button class="tab @(tab=="list"?"active":"")" @onclick="ShowList">買い物リスト</button>
-            <button class="tab @(tab=="master"?"active":"")" @onclick="ShowMaster">よく買うもの</button>
-            <button class="tab @(tab=="add"?"active":"")" @onclick="ShowAdd">追加</button>
+            <button class="tab @(tab=="history"?"active":"")" @onclick="ShowHistory">履歴</button>
+            <button class="tab @(tab=="add"?"active":"")" @onclick="ShowAdd">商品マスタ</button>
             <button class="tab-logout" @onclick="Logout">ログアウト</button>
         </div>
 
@@ -47,6 +48,7 @@ else
             <div class="header-row">
                 <span class="count-text">@checkedCount / @totalCount 件</span>
                 <button class="btn-sm" @onclick="ResetChecked">チェック済み削除</button>
+                <button class="btn-primary" @onclick="CompleteShopping">買い物履歴登録</button>
             </div>
             <div class="progress-wrap">
                 <div class="progress-bar" style="width:@progressPct%"></div>
@@ -68,12 +70,16 @@ else
                     <div class="card item-card">
                         <div class="item-row">
                             <div class="check-circle" @onclick="() => ToggleItem(itemId)"></div>
-                            <div class="item-info">
+                            <div class="item-info" style="flex:1">
                                 <div class="item-name">@item.Name</div>
-                                @if (!string.IsNullOrEmpty(item.Quantity) || !string.IsNullOrEmpty(item.Memo))
-                                {
-                                    <div class="item-sub">@item.Quantity @item.Memo</div>
-                                }
+                                <div class="item-sub">
+                                    <div class="quantity-control">
+                                        <button class="quantity-btn" @onclick="() => ChangeQuantity(itemId, -1)">-</button>
+                                        <span class="quantity-value">@item.Quantity</span>
+                                        <button class="quantity-btn" @onclick="() => ChangeQuantity(itemId, 1)">+</button>
+                                    </div>
+                                    @item.Memo
+                                </div>
                             </div>
                             <button class="btn-del" @onclick="() => DeleteItem(itemId)">×</button>
                         </div>
@@ -91,6 +97,14 @@ else
                                 <div class="check-circle checked" @onclick="() => ToggleItem(itemId)"></div>
                                 <div class="item-info">
                                     <div class="item-name done-text">@item.Name</div>
+                                    <div class="item-sub">
+                                        <div class="quantity-control">
+                                            <button class="quantity-btn" @onclick="() => ChangeQuantity(itemId, -1)">-</button>
+                                            <span class="quantity-value">@item.Quantity</span>
+                                            <button class="quantity-btn" @onclick="() => ChangeQuantity(itemId, 1)">+</button>
+                                        </div>
+                                        @item.Memo
+                                    </div>
                                 </div>
                                 <button class="btn-del" @onclick="() => DeleteItem(itemId)">×</button>
                             </div>
@@ -100,32 +114,36 @@ else
             }
         }
 
-        @if (tab == "master")
+        @if (tab == "history")
         {
-            @if (!string.IsNullOrEmpty(masterMessage))
+            @if (!string.IsNullOrEmpty(historyMessage))
             {
-                <div class="toast">@masterMessage</div>
+                <div class="toast">@historyMessage</div>
             }
-            @if (masterItems == null)
+            @if (shoppingHistories == null)
             {
                 <p class="loading">読み込み中...</p>
             }
-            else if (!masterItems.Any())
+            else if (!shoppingHistories.Any())
             {
-                <p class="empty">登録された商品がありません</p>
+                <p class="empty">履歴がありません</p>
             }
             else
             {
-                @foreach (var m in masterItems)
+                @foreach (var h in shoppingHistories)
                 {
-                    var mName = m.Name;
-                    var mId = m.Id;
-                    <div class="card item-card">
-                        <div class="item-row">
-                            <div class="item-name" style="flex:1">@m.Name</div>
-                            <button class="btn-add-from-master" @onclick="() => AddFromMaster(mName)">+ リストへ</button>
-                            <button class="btn-del" @onclick="() => DeleteMaster(mId)">×</button>
+                    var hId = h.Id;
+                    <div class="card" style="margin-bottom:1rem;">
+                        <div class="header-row">
+                            <span class="item-name">@h.CompletedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</span>
+                            <button class="btn-sm" @onclick="() => RestoreHistory(hId)">呼び出し</button>
                         </div>
+                        @foreach (var item in h.Items)
+                        {
+                            <div class="item-sub" style="margin-left:0.5rem;">
+                                @item.Name @item.Quantity @item.Memo @(item.IsChecked ? "(購入済み)" : "")
+                            </div>
+                        }
                     </div>
                 }
             }
@@ -137,38 +155,48 @@ else
             {
                 <div class="toast">@addMessage</div>
             }
-            <div class="card" style="margin-bottom:1rem;">
-                <p class="section-title">よく買うものから選ぶ</p>
-                <div class="chips">
-                    @if (masterItems != null)
-                    {
-                        @foreach (var m in masterItems)
-                        {
-                            var mName = m.Name;
-                            <button class="chip" @onclick="() => AddFromMaster(mName)">@m.Name</button>
-                        }
-                    }
-                </div>
-            </div>
             <div class="card">
-                <p class="section-title">新しく追加する</p>
+                <p class="section-title">商品マスタ</p>
                 <div class="form-group">
                     <label>商品名 *</label>
                     <input @bind="newName" type="text" placeholder="例：牛乳" />
-                </div>
-                <div class="form-group">
-                    <label>数量</label>
-                    <input @bind="newQty" type="text" placeholder="例：2本" />
                 </div>
                 <div class="form-group">
                     <label>メモ</label>
                     <textarea @bind="newMemo" placeholder="例：特売だったら2つ買って"></textarea>
                 </div>
                 <label class="check-label">
-                    <input type="checkbox" @bind="saveToMaster" /> よく買うものにも登録
+                    <input type="checkbox" @bind="addToShoppingList" /> 買い物リストに追加
                 </label>
-                <button class="btn-primary" @onclick="AddItem">リストに追加</button>
+                <button class="btn-primary" @onclick="AddMasterItem">追加</button>
             </div>
+            
+            @if (masterItems != null && masterItems.Any())
+            {
+                <div class="card" style="margin-top:1rem;">
+                    <p class="section-title">登録済み商品</p>
+                    @foreach (var m in masterItems)
+                    {
+                        var mId = m.Id;
+                        var mName = m.Name;
+                        var mMemo = m.Memo;
+                        <div class="card item-card" style="margin-bottom:0.5rem;">
+                            <div class="item-row">
+                                <div class="item-info" style="flex:1">
+                                    <div class="item-name">@m.Name</div>
+                                    @if (!string.IsNullOrEmpty(m.Memo))
+                                    {
+                                        <div class="item-sub">@m.Memo</div>
+                                    }
+                                </div>
+                                <button class="btn-sm" @onclick="() => AddFromMaster(mName, mMemo)">+ リストへ</button>
+                                <button class="btn-sm" @onclick="() => EditMasterItem(mId)">編集</button>
+                                <button class="btn-del" @onclick="() => DeleteMaster(mId)">×</button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
         }
     </div>
 }
@@ -178,11 +206,15 @@ else
     bool isAuth = false;
     bool showRegister = false;
     string username = "", password = "", registerCode = "", errorMsg = "";
-    string newName = "", newQty = "", newMemo = "";
-    string addMessage = "", masterMessage = "";
-    bool saveToMaster = false;
+    string newName = "", newMemo = "";
+    string addMessage = "";
+    string historyMessage = "";
+    bool addToShoppingList = true;
+    bool isEditingMaster = false;
+    int editingMasterId = 0;
     List<ShoppingItemModel>? listItems;
     List<MasterItemModel>? masterItems;
+    List<ShoppingHistoryModel>? shoppingHistories;
 
     int totalCount => listItems?.Count ?? 0;
     int checkedCount => listItems?.Count(i => i.IsChecked) ?? 0;
@@ -192,7 +224,7 @@ else
     void ShowLogin()  { showRegister = false; errorMsg = ""; }
     void ShowRegister() { showRegister = true; errorMsg = ""; }
     async Task ShowList()   { tab = "list"; await LoadList(); }
-    async Task ShowMaster() { tab = "master"; await LoadMaster(); }
+    async Task ShowHistory() { tab = "history"; await LoadHistory(); }
     async Task ShowAdd()    { tab = "add"; await LoadMaster(); }
 
     protected override async Task OnInitializedAsync()
@@ -258,30 +290,112 @@ else
         await LoadList();
     }
 
-    async Task AddItem()
+    async Task AddMasterItem()
     {
         if (string.IsNullOrWhiteSpace(newName)) return;
-        await Api.AddItemAsync(new AddItemRequest(newName, newQty, newMemo, saveToMaster));
-        newName = newQty = newMemo = "";
-        saveToMaster = false;
-        addMessage = "リストに追加しました！";
+        
+        if (isEditingMaster)
+        {
+            await Api.UpdateMasterItemAsync(editingMasterId, new UpdateMasterItemRequest(newName, newMemo));
+            addMessage = "商品を更新しました！";
+            isEditingMaster = false;
+            editingMasterId = 0;
+        }
+        else
+        {
+            await Api.AddMasterItemAsync(new AddMasterItemRequest(newName, newMemo));
+            addMessage = "商品を登録しました！";
+        }
+        
+        if (addToShoppingList)
+        {
+            await Api.AddItemAsync(new AddItemRequest(newName, "1", newMemo, false));
+        }
+        
+        newName = newMemo = "";
+        addToShoppingList = false;
+        await LoadMaster();
         StateHasChanged();
         await Task.Delay(1500);
         addMessage = "";
     }
 
-    async Task AddFromMaster(string name)
+    async Task EditMasterItem(int id)
     {
-        await Api.AddItemAsync(new AddItemRequest(name, null, null, false));
-        masterMessage = $"「{name}」をリストに追加しました！";
+        var item = masterItems?.FirstOrDefault(m => m.Id == id);
+        if (item != null)
+        {
+            newName = item.Name;
+            newMemo = item.Memo ?? "";
+            isEditingMaster = true;
+            editingMasterId = id;
+        }
+    }
+
+    async Task AddFromMaster(string name, string? memo)
+    {
+        await Api.AddItemAsync(new AddItemRequest(name, null, memo, false));
+        addMessage = $"「{name}」をリストに追加しました！";
         StateHasChanged();
         await Task.Delay(1500);
-        masterMessage = "";
+        addMessage = "";
     }
 
     async Task DeleteMaster(int id)
     {
         await Api.DeleteMasterItemAsync(id);
         await LoadMaster();
+    }
+
+    async Task UpdateQuantity(int id, string quantity)
+    {
+        var item = listItems?.FirstOrDefault(i => i.Id == id);
+        if (item != null)
+        {
+            await Api.UpdateItemAsync(id, new UpdateItemRequest(item.Name, quantity, item.Memo));
+            await LoadList();
+        }
+    }
+
+    async Task ChangeQuantity(int id, int delta)
+    {
+        var item = listItems?.FirstOrDefault(i => i.Id == id);
+        if (item != null)
+        {
+            var currentQty = int.TryParse(item.Quantity, out var qty) ? qty : 1;
+            var newQty = Math.Max(1, Math.Min(10, currentQty + delta));
+            await Api.UpdateItemAsync(id, new UpdateItemRequest(item.Name, newQty.ToString(), item.Memo));
+            await LoadList();
+        }
+    }
+
+    async Task LoadHistory()
+    {
+        shoppingHistories = await Api.GetShoppingHistoriesAsync();
+    }
+
+    async Task CompleteShopping()
+    {
+        if (listItems == null || !listItems.Any()) return;
+        
+        var snapshots = listItems.Select(i => new ShoppingItemSnapshot(i.Name, i.Quantity, i.Memo, i.IsChecked)).ToList();
+        await Api.CreateShoppingHistoryAsync(new CreateShoppingHistoryRequest(snapshots));
+        
+        await Api.ResetCheckedAsync();
+        await LoadList();
+        historyMessage = "買い物履歴を保存しました！";
+        StateHasChanged();
+        await Task.Delay(1500);
+        historyMessage = "";
+    }
+
+    async Task RestoreHistory(int historyId)
+    {
+        await Api.RestoreShoppingHistoryAsync(historyId);
+        await LoadList();
+        historyMessage = "履歴を呼び出しました！";
+        StateHasChanged();
+        await Task.Delay(1500);
+        historyMessage = "";
     }
 }

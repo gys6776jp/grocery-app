@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS master_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
+    memo TEXT,
     user_id INT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -30,4 +31,21 @@ CREATE TABLE IF NOT EXISTS shopping_items (
     is_checked BOOLEAN DEFAULT FALSE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (list_id) REFERENCES shopping_lists(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS shopping_histories (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    completed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS shopping_history_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    history_id INT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    quantity VARCHAR(50),
+    memo TEXT,
+    is_checked BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (history_id) REFERENCES shopping_histories(id) ON DELETE CASCADE
 );

@@ -7,5 +7,10 @@ public record ShoppingListResponse(int Id, string Name, List<ShoppingItemModel> 
 public record ShoppingItemModel(int Id, string Name, string? Quantity, string? Memo, bool IsChecked);
 public record AddItemRequest(string Name, string? Quantity, string? Memo, bool SaveToMaster);
 public record UpdateItemRequest(string Name, string? Quantity, string? Memo);
-public record MasterItemModel(int Id, string Name);
-public record AddMasterItemRequest(string Name);
+public record MasterItemModel(int Id, string Name, string? Memo);
+public record AddMasterItemRequest(string Name, string? Memo);
+public record UpdateMasterItemRequest(string Name, string? Memo);
+public record ShoppingHistoryModel(int Id, DateTime CompletedAt, List<ShoppingHistoryItemModel> Items);
+public record ShoppingHistoryItemModel(int Id, string Name, string? Quantity, string? Memo, bool IsChecked);
+public record CreateShoppingHistoryRequest(List<ShoppingItemSnapshot> Items);
+public record ShoppingItemSnapshot(string Name, string? Quantity, string? Memo, bool IsChecked);

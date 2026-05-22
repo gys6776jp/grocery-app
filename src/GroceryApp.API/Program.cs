@@ -4,6 +4,7 @@ using GroceryApp.Application.Interfaces;
 using GroceryApp.Application.UseCases.Auth;
 using GroceryApp.Application.UseCases.Master;
 using GroceryApp.Application.UseCases.ShoppingList;
+using GroceryApp.Application.UseCases.ShoppingHistory;
 using GroceryApp.Domain.Repositories;
 using GroceryApp.Infrastructure.Auth;
 using GroceryApp.Infrastructure.Data;
@@ -24,11 +25,13 @@ builder.Services.AddDbContext<AppDbContext>(opt =>
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IShoppingListRepository, ShoppingListRepository>();
 builder.Services.AddScoped<IMasterItemRepository, MasterItemRepository>();
+builder.Services.AddScoped<IShoppingHistoryRepository, ShoppingHistoryRepository>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<AuthUseCase>();
 builder.Services.AddScoped<ShoppingListUseCase>();
 builder.Services.AddScoped<MasterItemUseCase>();
+builder.Services.AddScoped<ShoppingHistoryUseCase>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opt =>

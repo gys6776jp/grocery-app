@@ -42,3 +42,13 @@ public class MasterItemRepository(AppDbContext db) : IMasterItemRepository
     public Task RemoveAsync(MasterItem item) { db.MasterItems.Remove(item); return Task.CompletedTask; }
     public Task SaveChangesAsync() => db.SaveChangesAsync();
 }
+
+public class ShoppingHistoryRepository(AppDbContext db) : IShoppingHistoryRepository
+{
+    public async Task<IEnumerable<ShoppingHistory>> GetByUserIdAsync(int userId) =>
+        await db.ShoppingHistories.Include(h => h.Items).Where(h => h.UserId == userId).OrderByDescending(h => h.CompletedAt).ToListAsync();
+    public Task<ShoppingHistory?> GetByIdAsync(int id) =>
+        db.ShoppingHistories.Include(h => h.Items).FirstOrDefaultAsync(h => h.Id == id);
+    public async Task AddAsync(ShoppingHistory history) => await db.ShoppingHistories.AddAsync(history);
+    public Task SaveChangesAsync() => db.SaveChangesAsync();
+}

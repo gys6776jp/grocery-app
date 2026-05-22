@@ -69,6 +69,12 @@ public class ApiService(HttpClient http, IJSRuntime js)
         await http.PatchAsync($"api/shoppinglist/items/{itemId}/toggle", null);
     }
 
+    public async Task UpdateItemAsync(int itemId, UpdateItemRequest request)
+    {
+        await SetAuthHeaderAsync();
+        await http.PutAsJsonAsync($"api/shoppinglist/items/{itemId}", request);
+    }
+
     public async Task DeleteItemAsync(int itemId)
     {
         await SetAuthHeaderAsync();
@@ -96,9 +102,36 @@ public class ApiService(HttpClient http, IJSRuntime js)
             : null;
     }
 
+    public async Task UpdateMasterItemAsync(int itemId, UpdateMasterItemRequest request)
+    {
+        await SetAuthHeaderAsync();
+        await http.PutAsJsonAsync($"api/masteritems/{itemId}", request);
+    }
+
     public async Task DeleteMasterItemAsync(int itemId)
     {
         await SetAuthHeaderAsync();
         await http.DeleteAsync($"api/masteritems/{itemId}");
+    }
+
+    public async Task<List<ShoppingHistoryModel>?> GetShoppingHistoriesAsync()
+    {
+        await SetAuthHeaderAsync();
+        return await http.GetFromJsonAsync<List<ShoppingHistoryModel>>("api/shoppinghistories");
+    }
+
+    public async Task<ShoppingHistoryModel?> CreateShoppingHistoryAsync(CreateShoppingHistoryRequest request)
+    {
+        await SetAuthHeaderAsync();
+        var res = await http.PostAsJsonAsync("api/shoppinghistories", request);
+        return res.IsSuccessStatusCode
+            ? await res.Content.ReadFromJsonAsync<ShoppingHistoryModel>()
+            : null;
+    }
+
+    public async Task RestoreShoppingHistoryAsync(int historyId)
+    {
+        await SetAuthHeaderAsync();
+        await http.PostAsync($"api/shoppinghistories/{historyId}/restore", null);
     }
 }

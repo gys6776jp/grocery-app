@@ -3,6 +3,7 @@ using GroceryApp.Application.DTOs;
 using GroceryApp.Application.UseCases.Auth;
 using GroceryApp.Application.UseCases.Master;
 using GroceryApp.Application.UseCases.ShoppingList;
+using GroceryApp.Application.UseCases.ShoppingHistory;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -98,10 +99,45 @@ public class MasterItemsController(MasterItemUseCase useCase) : ControllerBase
         catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
     }
 
+    [HttpPut("{itemId:int}")]
+    public async Task<IActionResult> Update(int itemId, [FromBody] UpdateMasterItemRequest request)
+    {
+        try { await useCase.UpdateAsync(UserId, itemId, request); return NoContent(); }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
+    }
+
     [HttpDelete("{itemId:int}")]
     public async Task<IActionResult> Delete(int itemId)
     {
         try { await useCase.DeleteAsync(UserId, itemId); return NoContent(); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
+    }
+}
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize]
+public class ShoppingHistoriesController(ShoppingHistoryUseCase useCase) : ControllerBase
+{
+    private int UserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll() => Ok(await useCase.GetAllAsync(UserId));
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateShoppingHistoryRequest request)
+    {
+        try { return Ok(await useCase.CreateAsync(UserId, request)); }
+        catch (Exception ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    [HttpPost("{historyId:int}/restore")]
+    public async Task<IActionResult> Restore(int historyId)
+    {
+        try { await useCase.RestoreAsync(UserId, historyId); return NoContent(); }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
     }
 }

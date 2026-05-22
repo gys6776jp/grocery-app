@@ -9,6 +9,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ShoppingList> ShoppingLists => Set<ShoppingList>();
     public DbSet<ShoppingItem> ShoppingItems => Set<ShoppingItem>();
     public DbSet<MasterItem> MasterItems => Set<MasterItem>();
+    public DbSet<ShoppingHistory> ShoppingHistories => Set<ShoppingHistory>();
+    public DbSet<ShoppingHistoryItem> ShoppingHistoryItems => Set<ShoppingHistoryItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -56,8 +58,34 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(m => m.Id);
             e.Property(m => m.Id).HasColumnName("id");
             e.Property(m => m.Name).HasColumnName("name").HasMaxLength(100).IsRequired();
+            e.Property(m => m.Memo).HasColumnName("memo");
             e.Property(m => m.UserId).HasColumnName("user_id");
             e.Property(m => m.CreatedAt).HasColumnName("created_at");
+        });
+
+        modelBuilder.Entity<ShoppingHistory>(e =>
+        {
+            e.ToTable("shopping_histories");
+            e.HasKey(h => h.Id);
+            e.Property(h => h.Id).HasColumnName("id");
+            e.Property(h => h.UserId).HasColumnName("user_id");
+            e.Property(h => h.CompletedAt).HasColumnName("completed_at");
+            e.HasMany(h => h.Items)
+             .WithOne()
+             .HasForeignKey(i => i.HistoryId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ShoppingHistoryItem>(e =>
+        {
+            e.ToTable("shopping_history_items");
+            e.HasKey(i => i.Id);
+            e.Property(i => i.Id).HasColumnName("id");
+            e.Property(i => i.HistoryId).HasColumnName("history_id");
+            e.Property(i => i.Name).HasColumnName("name").HasMaxLength(100).IsRequired();
+            e.Property(i => i.Quantity).HasColumnName("quantity").HasMaxLength(50);
+            e.Property(i => i.Memo).HasColumnName("memo");
+            e.Property(i => i.IsChecked).HasColumnName("is_checked");
         });
     }
 }
