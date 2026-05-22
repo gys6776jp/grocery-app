@@ -181,14 +181,14 @@ else
                         var mName = m.Name;
                         var mMemo = m.Memo;
                         <div class="card item-card" style="margin-bottom:0.5rem;">
-                            <div class="item-row">
-                                <div class="item-info" style="flex:1">
-                                    <div class="item-name">@m.Name</div>
-                                    @if (!string.IsNullOrEmpty(m.Memo))
-                                    {
-                                        <div class="item-sub">@m.Memo</div>
-                                    }
-                                </div>
+                            <div class="item-info" style="margin-bottom: 10px;">
+                                <div class="item-name">@m.Name</div>
+                                @if (!string.IsNullOrEmpty(m.Memo))
+                                {
+                                    <div class="item-sub">@m.Memo</div>
+                                }
+                            </div>
+                            <div class="item-row" style="justify-content: flex-end;">
                                 <button class="btn-sm" @onclick="() => AddFromMaster(mName, mMemo)">+ リストへ</button>
                                 <button class="btn-sm" @onclick="() => EditMasterItem(mId)">編集</button>
                                 <button class="btn-del" @onclick="() => DeleteMaster(mId)">×</button>
