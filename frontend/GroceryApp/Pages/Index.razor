@@ -48,6 +48,7 @@ else
             <div class="header-row">
                 <span class="count-text">@checkedCount / @totalCount 件</span>
                 <button class="btn-sm" @onclick="ResetChecked">チェック済み削除</button>
+                <button class="btn-sm" @onclick="DeleteAllItems">全削除</button>
                 <button class="btn-primary" @onclick="CompleteShopping">買い物履歴登録</button>
             </div>
             <div class="progress-wrap">
@@ -137,6 +138,7 @@ else
                         <div class="header-row">
                             <span class="item-name">@h.CompletedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</span>
                             <button class="btn-sm" @onclick="() => RestoreHistory(hId)">呼び出し</button>
+                            <button class="btn-del" @onclick="() => DeleteHistory(hId)">×</button>
                         </div>
                         @foreach (var item in h.Items)
                         {
@@ -175,7 +177,10 @@ else
             {
                 <div class="card" style="margin-top:1rem;">
                     <p class="section-title">登録済み商品</p>
-                    @foreach (var m in masterItems)
+                    <div class="form-group">
+                        <input @bind="searchQuery" type="text" placeholder="商品名で検索..." />
+                    </div>
+                    @foreach (var m in masterItems.Where(m => string.IsNullOrEmpty(searchQuery) || m.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase)))
                     {
                         var mId = m.Id;
                         var mName = m.Name;
@@ -212,6 +217,7 @@ else
     bool addToShoppingList = true;
     bool isEditingMaster = false;
     int editingMasterId = 0;
+    string searchQuery = "";
     List<ShoppingItemModel>? listItems;
     List<MasterItemModel>? masterItems;
     List<ShoppingHistoryModel>? shoppingHistories;
@@ -329,6 +335,7 @@ else
             newMemo = item.Memo ?? "";
             isEditingMaster = true;
             editingMasterId = id;
+            await JS.InvokeVoidAsync("window.scrollTo", 0, 0);
         }
     }
 
@@ -397,5 +404,17 @@ else
         StateHasChanged();
         await Task.Delay(1500);
         historyMessage = "";
+    }
+
+    async Task DeleteAllItems()
+    {
+        await Api.DeleteAllItemsAsync();
+        await LoadList();
+    }
+
+    async Task DeleteHistory(int historyId)
+    {
+        await Api.DeleteShoppingHistoryAsync(historyId);
+        await LoadHistory();
     }
 }

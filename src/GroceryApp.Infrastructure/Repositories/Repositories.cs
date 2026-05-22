@@ -29,6 +29,11 @@ public class ShoppingListRepository(AppDbContext db) : IShoppingListRepository
         var items = await db.ShoppingItems.Where(i => i.ListId == listId && i.IsChecked).ToListAsync();
         db.ShoppingItems.RemoveRange(items);
     }
+    public async Task RemoveAllItemsAsync(int listId)
+    {
+        var items = await db.ShoppingItems.Where(i => i.ListId == listId).ToListAsync();
+        db.ShoppingItems.RemoveRange(items);
+    }
     public Task SaveChangesAsync() => db.SaveChangesAsync();
 }
 
@@ -50,5 +55,6 @@ public class ShoppingHistoryRepository(AppDbContext db) : IShoppingHistoryReposi
     public Task<ShoppingHistory?> GetByIdAsync(int id) =>
         db.ShoppingHistories.Include(h => h.Items).FirstOrDefaultAsync(h => h.Id == id);
     public async Task AddAsync(ShoppingHistory history) => await db.ShoppingHistories.AddAsync(history);
+    public Task RemoveAsync(ShoppingHistory history) { db.ShoppingHistories.Remove(history); return Task.CompletedTask; }
     public Task SaveChangesAsync() => db.SaveChangesAsync();
 }

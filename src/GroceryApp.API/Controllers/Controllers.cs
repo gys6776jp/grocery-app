@@ -80,6 +80,13 @@ public class ShoppingListController(ShoppingListUseCase useCase) : ControllerBas
         await useCase.ResetCheckedAsync(UserId);
         return NoContent();
     }
+
+    [HttpDelete("all")]
+    public async Task<IActionResult> DeleteAll()
+    {
+        await useCase.DeleteAllItemsAsync(UserId);
+        return NoContent();
+    }
 }
 
 [ApiController]
@@ -137,6 +144,14 @@ public class ShoppingHistoriesController(ShoppingHistoryUseCase useCase) : Contr
     public async Task<IActionResult> Restore(int historyId)
     {
         try { await useCase.RestoreAsync(UserId, historyId); return NoContent(); }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
+    }
+
+    [HttpDelete("{historyId:int}")]
+    public async Task<IActionResult> Delete(int historyId)
+    {
+        try { await useCase.DeleteAsync(UserId, historyId); return NoContent(); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
         catch (UnauthorizedAccessException ex) { return Unauthorized(new { message = ex.Message }); }
     }

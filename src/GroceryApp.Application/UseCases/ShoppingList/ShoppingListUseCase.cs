@@ -77,6 +77,14 @@ public class ShoppingListUseCase(IShoppingListRepository listRepo, IMasterItemRe
         await listRepo.SaveChangesAsync();
     }
 
+    public async Task DeleteAllItemsAsync(int userId)
+    {
+        var list = await listRepo.GetByUserIdAsync(userId)
+            ?? throw new KeyNotFoundException("リストが見つかりません");
+        await listRepo.RemoveAllItemsAsync(list.Id);
+        await listRepo.SaveChangesAsync();
+    }
+
     private static ShoppingListResponse ToResponse(ListEntity list) =>
         new(list.Id, list.Name, list.Items.Select(ToItemResponse).ToList());
 

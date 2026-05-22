@@ -18,6 +18,7 @@ public interface IShoppingListRepository
     Task AddItemAsync(ShoppingItem item);
     Task RemoveItemAsync(ShoppingItem item);
     Task RemoveCheckedItemsAsync(int listId);
+    Task RemoveAllItemsAsync(int listId);
     Task SaveChangesAsync();
 }
 
@@ -35,5 +36,6 @@ public interface IShoppingHistoryRepository
     Task<IEnumerable<ShoppingHistory>> GetByUserIdAsync(int userId);
     Task<ShoppingHistory?> GetByIdAsync(int id);
     Task AddAsync(ShoppingHistory history);
+    Task RemoveAsync(ShoppingHistory history);
     Task SaveChangesAsync();
 }

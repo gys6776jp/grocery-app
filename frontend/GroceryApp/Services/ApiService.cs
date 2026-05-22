@@ -87,6 +87,12 @@ public class ApiService(HttpClient http, IJSRuntime js)
         await http.DeleteAsync("api/shoppinglist/reset");
     }
 
+    public async Task DeleteAllItemsAsync()
+    {
+        await SetAuthHeaderAsync();
+        await http.DeleteAsync("api/shoppinglist/all");
+    }
+
     public async Task<List<MasterItemModel>?> GetMasterItemsAsync()
     {
         await SetAuthHeaderAsync();
@@ -133,5 +139,11 @@ public class ApiService(HttpClient http, IJSRuntime js)
     {
         await SetAuthHeaderAsync();
         await http.PostAsync($"api/shoppinghistories/{historyId}/restore", null);
+    }
+
+    public async Task DeleteShoppingHistoryAsync(int historyId)
+    {
+        await SetAuthHeaderAsync();
+        await http.DeleteAsync($"api/shoppinghistories/{historyId}");
     }
 }

@@ -80,4 +80,14 @@ public class ShoppingHistoryUseCase(IShoppingHistoryRepository historyRepo, ISho
         }
         await listRepo.SaveChangesAsync();
     }
+
+    public async Task DeleteAsync(int userId, int historyId)
+    {
+        var history = await historyRepo.GetByIdAsync(historyId)
+            ?? throw new KeyNotFoundException("履歴が見つかりません");
+        if (history.UserId != userId)
+            throw new UnauthorizedAccessException("この履歴を削除する権限がありません");
+        await historyRepo.RemoveAsync(history);
+        await historyRepo.SaveChangesAsync();
+    }
 }
