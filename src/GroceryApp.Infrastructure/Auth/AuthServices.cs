@@ -13,6 +13,11 @@ public class JwtService(IConfiguration config) : IJwtService
     public string GenerateToken(User user)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["Jwt:Key"]!));
+        var expirationMinutes = int.TryParse(config["Jwt:ExpirationMinutes"], out var minutes) ? minutes : 20160; // 14 days
+        var expires = DateTime.UtcNow.AddMinutes(expirationMinutes);
+        
+        Console.WriteLine($"[JWT] Token generated for user {user.Username}, expires at: {expires} (UTC), expirationMinutes: {expirationMinutes}");
+        
         var token = new JwtSecurityToken(
             issuer: config["Jwt:Issuer"],
             audience: config["Jwt:Audience"],
@@ -21,7 +26,7 @@ public class JwtService(IConfiguration config) : IJwtService
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.Username)
             },
-            expires: DateTime.UtcNow.AddHours(8),
+            expires: expires,
             signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256)
         );
         return new JwtSecurityTokenHandler().WriteToken(token);

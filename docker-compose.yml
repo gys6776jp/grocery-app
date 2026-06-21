@@ -34,6 +34,7 @@ services:
       Jwt__Key: ${JWT_KEY}
       Jwt__Issuer: https://grocery.yoshihamkorori.work
       Jwt__Audience: https://grocery.yoshihamkorori.work
+      Jwt__ExpirationMinutes: ${JWT_EXPIRATION_MINUTES:-20160} # 14 days
       App__FrontendOrigin: https://grocery.yoshihamkorori.work
       Auth__RegisterCode: ${REGISTER_CODE}
     depends_on:

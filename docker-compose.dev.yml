@@ -34,6 +34,7 @@ services:
       Jwt__Key: dev_secret_key_minimum_32_characters_long
       Jwt__Issuer: https://localhost
       Jwt__Audience: https://localhost
+      Jwt__ExpirationMinutes: 20160
       App__FrontendOrigin: https://localhost
       Auth__RegisterCode: dev_register_code_change_me
     depends_on:

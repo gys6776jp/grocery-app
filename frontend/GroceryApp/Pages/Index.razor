@@ -7,6 +7,7 @@
     <div class="login-wrap">
         <div class="card">
             <h2>買い物アプリ</h2>
+            @if (!string.IsNullOrEmpty(sessionExpiredMessage)) { <p class="error">@sessionExpiredMessage</p> }
             @if (!string.IsNullOrEmpty(errorMsg)) { <p class="error">@errorMsg</p> }
             <div class="form-group">
                 <label>ユーザー名</label>
@@ -214,6 +215,7 @@ else
     string newName = "", newMemo = "";
     string addMessage = "";
     string historyMessage = "";
+    string sessionExpiredMessage = "";
     bool addToShoppingList = true;
     bool isEditingMaster = false;
     int editingMasterId = 0;
@@ -235,13 +237,25 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        Api.OnUnauthorized += HandleUnauthorized;
         isAuth = await Api.IsAuthenticatedAsync();
         if (isAuth) await LoadList();
+    }
+
+    private void HandleUnauthorized()
+    {
+        Console.WriteLine("[Index.razor] HandleUnauthorized called, showing session expired message");
+        sessionExpiredMessage = "自動ログインの有効期間を過ぎたためログアウトしました";
+        isAuth = false;
+        listItems = null;
+        username = password = registerCode = "";
+        StateHasChanged();
     }
 
     async Task Login()
     {
         errorMsg = "";
+        sessionExpiredMessage = "";
         var res = await Api.LoginAsync(new LoginRequest(username, password));
         if (res == null) { errorMsg = "ログインに失敗しました"; return; }
         isAuth = true;

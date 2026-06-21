@@ -8,6 +8,7 @@ namespace GroceryApp.Services;
 public class ApiService(HttpClient http, IJSRuntime js)
 {
     private const string TokenKey = "auth_token";
+    public event Action? OnUnauthorized;
 
     public async Task<bool> IsAuthenticatedAsync()
     {
@@ -20,6 +21,16 @@ public class ApiService(HttpClient http, IJSRuntime js)
         var token = await js.InvokeAsync<string?>("localStorage.getItem", TokenKey);
         http.DefaultRequestHeaders.Authorization =
             string.IsNullOrEmpty(token) ? null : new AuthenticationHeaderValue("Bearer", token);
+    }
+
+    private async Task HandleResponseAsync(HttpResponseMessage response)
+    {
+        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            Console.WriteLine("[ApiService] 401 Unauthorized detected, logging out...");
+            await LogoutAsync();
+            OnUnauthorized?.Invoke();
+        }
     }
 
     public async Task<AuthResponse?> LoginAsync(LoginRequest request)
@@ -51,13 +62,16 @@ public class ApiService(HttpClient http, IJSRuntime js)
     public async Task<ShoppingListResponse?> GetListAsync()
     {
         await SetAuthHeaderAsync();
-        return await http.GetFromJsonAsync<ShoppingListResponse>("api/shoppinglist");
+        var res = await http.GetAsync("api/shoppinglist");
+        await HandleResponseAsync(res);
+        return res.IsSuccessStatusCode ? await res.Content.ReadFromJsonAsync<ShoppingListResponse>() : null;
     }
 
     public async Task<ShoppingItemModel?> AddItemAsync(AddItemRequest request)
     {
         await SetAuthHeaderAsync();
         var res = await http.PostAsJsonAsync("api/shoppinglist/items", request);
+        await HandleResponseAsync(res);
         return res.IsSuccessStatusCode
             ? await res.Content.ReadFromJsonAsync<ShoppingItemModel>()
             : null;
@@ -66,43 +80,51 @@ public class ApiService(HttpClient http, IJSRuntime js)
     public async Task ToggleItemAsync(int itemId)
     {
         await SetAuthHeaderAsync();
-        await http.PatchAsync($"api/shoppinglist/items/{itemId}/toggle", null);
+        var res = await http.PatchAsync($"api/shoppinglist/items/{itemId}/toggle", null);
+        await HandleResponseAsync(res);
     }
 
     public async Task UpdateItemAsync(int itemId, UpdateItemRequest request)
     {
         await SetAuthHeaderAsync();
-        await http.PutAsJsonAsync($"api/shoppinglist/items/{itemId}", request);
+        var res = await http.PutAsJsonAsync($"api/shoppinglist/items/{itemId}", request);
+        await HandleResponseAsync(res);
     }
 
     public async Task DeleteItemAsync(int itemId)
     {
         await SetAuthHeaderAsync();
-        await http.DeleteAsync($"api/shoppinglist/items/{itemId}");
+        var res = await http.DeleteAsync($"api/shoppinglist/items/{itemId}");
+        await HandleResponseAsync(res);
     }
 
     public async Task ResetCheckedAsync()
     {
         await SetAuthHeaderAsync();
-        await http.DeleteAsync("api/shoppinglist/reset");
+        var res = await http.DeleteAsync("api/shoppinglist/reset");
+        await HandleResponseAsync(res);
     }
 
     public async Task DeleteAllItemsAsync()
     {
         await SetAuthHeaderAsync();
-        await http.DeleteAsync("api/shoppinglist/all");
+        var res = await http.DeleteAsync("api/shoppinglist/all");
+        await HandleResponseAsync(res);
     }
 
     public async Task<List<MasterItemModel>?> GetMasterItemsAsync()
     {
         await SetAuthHeaderAsync();
-        return await http.GetFromJsonAsync<List<MasterItemModel>>("api/masteritems");
+        var res = await http.GetAsync("api/masteritems");
+        await HandleResponseAsync(res);
+        return res.IsSuccessStatusCode ? await res.Content.ReadFromJsonAsync<List<MasterItemModel>>() : null;
     }
 
     public async Task<MasterItemModel?> AddMasterItemAsync(AddMasterItemRequest request)
     {
         await SetAuthHeaderAsync();
         var res = await http.PostAsJsonAsync("api/masteritems", request);
+        await HandleResponseAsync(res);
         return res.IsSuccessStatusCode
             ? await res.Content.ReadFromJsonAsync<MasterItemModel>()
             : null;
@@ -111,25 +133,30 @@ public class ApiService(HttpClient http, IJSRuntime js)
     public async Task UpdateMasterItemAsync(int itemId, UpdateMasterItemRequest request)
     {
         await SetAuthHeaderAsync();
-        await http.PutAsJsonAsync($"api/masteritems/{itemId}", request);
+        var res = await http.PutAsJsonAsync($"api/masteritems/{itemId}", request);
+        await HandleResponseAsync(res);
     }
 
     public async Task DeleteMasterItemAsync(int itemId)
     {
         await SetAuthHeaderAsync();
-        await http.DeleteAsync($"api/masteritems/{itemId}");
+        var res = await http.DeleteAsync($"api/masteritems/{itemId}");
+        await HandleResponseAsync(res);
     }
 
     public async Task<List<ShoppingHistoryModel>?> GetShoppingHistoriesAsync()
     {
         await SetAuthHeaderAsync();
-        return await http.GetFromJsonAsync<List<ShoppingHistoryModel>>("api/shoppinghistories");
+        var res = await http.GetAsync("api/shoppinghistories");
+        await HandleResponseAsync(res);
+        return res.IsSuccessStatusCode ? await res.Content.ReadFromJsonAsync<List<ShoppingHistoryModel>>() : null;
     }
 
     public async Task<ShoppingHistoryModel?> CreateShoppingHistoryAsync(CreateShoppingHistoryRequest request)
     {
         await SetAuthHeaderAsync();
         var res = await http.PostAsJsonAsync("api/shoppinghistories", request);
+        await HandleResponseAsync(res);
         return res.IsSuccessStatusCode
             ? await res.Content.ReadFromJsonAsync<ShoppingHistoryModel>()
             : null;
@@ -138,12 +165,14 @@ public class ApiService(HttpClient http, IJSRuntime js)
     public async Task RestoreShoppingHistoryAsync(int historyId)
     {
         await SetAuthHeaderAsync();
-        await http.PostAsync($"api/shoppinghistories/{historyId}/restore", null);
+        var res = await http.PostAsync($"api/shoppinghistories/{historyId}/restore", null);
+        await HandleResponseAsync(res);
     }
 
     public async Task DeleteShoppingHistoryAsync(int historyId)
     {
         await SetAuthHeaderAsync();
-        await http.DeleteAsync($"api/shoppinghistories/{historyId}");
+        var res = await http.DeleteAsync($"api/shoppinghistories/{historyId}");
+        await HandleResponseAsync(res);
     }
 }
