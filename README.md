@@ -196,3 +196,4 @@ sudo certbot renew --dry-run
 | GET | /api/masteritems | ✓ | よく買うもの一覧 |
 | POST | /api/masteritems | ✓ | よく買うもの追加 |
 | DELETE | /api/masteritems/{id} | ✓ | よく買うもの削除 |
+\n<!-- Update: Adding contributing and PR template -->
